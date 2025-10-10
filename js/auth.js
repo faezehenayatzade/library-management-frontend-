@@ -1,4 +1,3 @@
-// مدیریت احراز هویت
 class AuthManager {
   constructor() {
     this.tokenName = "library_token";
