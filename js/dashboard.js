@@ -23,11 +23,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateDashboardStats(userData, loansData, booksData) {
     const activeLoans = loansData.filter(
-      (loan) => loan.status === "active"
+      (loan) => loan.status === "active",
     ).length;
 
     const availableBooks = booksData.filter(
-      (book) => book.availableCopies > 0
+      (book) => book.availableCopies > 0,
     ).length;
 
     const activeLoansElement = document.getElementById("activeLoans");
@@ -47,9 +47,7 @@ document.addEventListener("DOMContentLoaded", function () {
       link.addEventListener("click", function (event) {
         event.preventDefault();
 
-        const confirmLogout = confirm(
-          "Are you sure you want to logout?"
-        );
+        const confirmLogout = confirm("Are you sure you want to logout?");
         if (confirmLogout) {
           authManager.logoutUser();
         }

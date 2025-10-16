@@ -32,15 +32,16 @@ document.addEventListener("DOMContentLoaded", function () {
   document.body.appendChild(modal);
 
   modal.addEventListener("click", function (e) {
-  if (!e.target.closest("#modalBox")) {
-    modal.style.display = "none";
-  }
-});
-
-
-  document.getElementById("closeModalBtn").addEventListener("click", function () {
-    modal.style.display = "none";
+    if (!e.target.closest("#modalBox")) {
+      modal.style.display = "none";
+    }
   });
+
+  document
+    .getElementById("closeModalBtn")
+    .addEventListener("click", function () {
+      modal.style.display = "none";
+    });
 
   loadBooks();
 
@@ -59,7 +60,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .getBooksList()
       .then(function (books) {
         cacheManager.saveBooksToCache(books);
-        console.log("books:" ,books)
+        console.log("books:", books);
         renderBooks(books);
       })
       .catch(function (error) {
@@ -69,7 +70,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function renderBooks(books) {
-    console.log(books)
+    console.log(books);
     if (!books || books.length === 0) {
       booksGrid.innerHTML = `<p>No books found.</p>`;
       return;
@@ -103,7 +104,7 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error(" Borrow failed:", error);
             utils.showMessage(
               error.message || "Error borrowing book.",
-              "error"
+              "error",
             );
           })
           .finally(function () {
@@ -133,7 +134,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const cachedBooks = cacheManager.getBooksFromCache() || [];
             const found = cachedBooks.find(
-              (b) => b.id == bookId || b._id == bookId
+              (b) => b.id == bookId || b._id == bookId,
             );
             if (found) {
               showBookDetails(found);
@@ -146,15 +147,17 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function showBookDetails(book) {
-  const modalContent = document.getElementById("modalContent");
+    const modalContent = document.getElementById("modalContent");
 
-  let categoryName = "Uncategorized";
-  if (book.category.name) {
-    categoryName = typeof book.category === "string" ? book.category : book.category.name || "Uncategorized";
-  }
+    let categoryName = "Uncategorized";
+    if (book.category.name) {
+      categoryName =
+        typeof book.category === "string"
+          ? book.category
+          : book.category.name || "Uncategorized";
+    }
 
-
-  modalContent.innerHTML = `
+    modalContent.innerHTML = `
     <h2 class="mb-2">${book.title}</h2>
     <p><strong>Author:</strong> ${book.author || "Unknown"}</p>
     <p><strong>ISBN:</strong> ${book.isbn || "-"}</p>
@@ -165,9 +168,8 @@ document.addEventListener("DOMContentLoaded", function () {
     <p>${book.description || "No description provided."}</p>
   `;
 
-  modal.style.display = "flex";
+    modal.style.display = "flex";
   }
-
 
   function setupLogoutButton() {
     const logoutLinks = document.querySelectorAll('a[href="login.html"]');
@@ -182,4 +184,3 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
-

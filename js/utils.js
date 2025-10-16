@@ -1,5 +1,9 @@
 function createUtils() {
-  function showMessage(message, type = "info", containerId = "alert-container") {
+  function showMessage(
+    message,
+    type = "info",
+    containerId = "alert-container",
+  ) {
     const container = document.getElementById(containerId);
     if (!container) return;
 

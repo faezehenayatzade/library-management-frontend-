@@ -46,7 +46,8 @@ document.addEventListener("DOMContentLoaded", function () {
       .catch(async (error) => {
         console.error(" Login error:", error);
 
-        let errorMessage = "Login failed. Please check your email and password.";
+        let errorMessage =
+          "Login failed. Please check your email and password.";
 
         if (error.message.includes("401")) {
           errorMessage = "Incorrect email or password.";

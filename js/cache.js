@@ -36,8 +36,8 @@ function createCacheManager() {
   }
 
   function clearBooksCache() {
-    localStorage.removeItem(booksCacheKey); 
-    localStorage.removeItem(cacheTimeKey);   
+    localStorage.removeItem(booksCacheKey);
+    localStorage.removeItem(cacheTimeKey);
   }
 
   function hasValidCache() {

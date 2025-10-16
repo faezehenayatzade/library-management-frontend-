@@ -62,7 +62,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateLoanStats(loans) {
     const activeLoans = loans.filter((loan) => loan.status === "active").length;
-    const returnedLoans = loans.filter((loan) => loan.status === "returned").length;
+    const returnedLoans = loans.filter(
+      (loan) => loan.status === "returned",
+    ).length;
 
     const statNumbers = document.querySelectorAll(".stat-number");
     if (statNumbers.length >= 2) {
@@ -95,7 +97,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function setupReturnButtons() {
-    const returnButtons = document.querySelectorAll(".return-btn:not([disabled])");
+    const returnButtons = document.querySelectorAll(
+      ".return-btn:not([disabled])",
+    );
     returnButtons.forEach((button) => {
       button.addEventListener("click", function () {
         const row = this.closest("tr");

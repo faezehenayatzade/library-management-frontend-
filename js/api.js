@@ -140,7 +140,7 @@ function createApiService() {
     borrowBook,
     returnBook,
     getCategories,
-    sendRequest, 
+    sendRequest,
   };
 }
 

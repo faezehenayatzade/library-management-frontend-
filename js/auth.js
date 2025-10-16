@@ -6,11 +6,14 @@ function createAuthManager() {
 
   function saveUserData(token, userData) {
     const expireDate = new Date();
-    expireDate.setTime(expireDate.getTime() + 24 * 60 * 60 * 1000); 
+    expireDate.setTime(expireDate.getTime() + 24 * 60 * 60 * 1000);
 
     document.cookie =
-      TOKEN_KEY + "=" + token +
-      "; expires=" + expireDate.toUTCString() +
+      TOKEN_KEY +
+      "=" +
+      token +
+      "; expires=" +
+      expireDate.toUTCString() +
       "; path=/";
 
     localStorage.setItem(USER_KEY, JSON.stringify(userData));
@@ -80,9 +83,8 @@ function createAuthManager() {
     const fullName = (firstName + " " + lastName).trim();
 
     if (avatarEl) {
-      avatarEl.textContent = firstName.length > 0
-        ? firstName.charAt(0).toUpperCase()
-        : "?";
+      avatarEl.textContent =
+        firstName.length > 0 ? firstName.charAt(0).toUpperCase() : "?";
     }
 
     if (nameEl) {
@@ -101,7 +103,7 @@ function createAuthManager() {
     isUserLoggedIn,
     logoutUser,
     checkPageAccess,
-    showUserInHeader
+    showUserInHeader,
   };
 }
 
