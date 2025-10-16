@@ -17,18 +17,17 @@ document.addEventListener("DOMContentLoaded", function () {
         updateDashboardStats(userData, loansData, booksData);
       })
       .catch((error) => {
-        console.error("خطا در بارگذاری اطلاعات:", error);
-        utils.showMessage("خطا در بارگذاری اطلاعات داشبورد", "error");
+        utils.showMessage("Failed to load dashboard data", "error");
       });
   }
 
   function updateDashboardStats(userData, loansData, booksData) {
     const activeLoans = loansData.filter(
-      (loan) => loan.status === "active",
+      (loan) => loan.status === "active"
     ).length;
 
     const availableBooks = booksData.filter(
-      (book) => book.availableCopies > 0,
+      (book) => book.availableCopies > 0
     ).length;
 
     const activeLoansElement = document.getElementById("activeLoans");
@@ -49,7 +48,7 @@ document.addEventListener("DOMContentLoaded", function () {
         event.preventDefault();
 
         const confirmLogout = confirm(
-          "آیا مطمئن هستید که می‌خواهید خارج شوید؟",
+          "Are you sure you want to logout?"
         );
         if (confirmLogout) {
           authManager.logoutUser();

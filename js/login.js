@@ -13,12 +13,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const password = passwordInput.value;
 
     if (!utils.isValidEmail(email)) {
-      utils.showMessage("لطفا یک ایمیل معتبر وارد کنید", "error");
+      utils.showMessage("Please enter a valid email", "error");
       return;
     }
 
     if (password.length < 1) {
-      utils.showMessage("لطفا رمز عبور خود را وارد کنید", "error");
+      utils.showMessage("Please enter your password", "error");
       return;
     }
 
@@ -31,20 +31,32 @@ document.addEventListener("DOMContentLoaded", function () {
     apiService
       .loginUser(email, password)
       .then((loginData) => {
+        if (!loginData || !loginData.token) {
+          throw new Error("Invalid response from server");
+        }
+
         authManager.saveUserData(loginData.token, loginData.user);
 
-        utils.showMessage("ورود موفقیت‌آمیز بود!", "success");
+        utils.showMessage("Login successful", "success");
 
         setTimeout(() => {
           window.location.href = "dashboard.html";
         }, 1000);
       })
-      .catch((error) => {
-        console.error("خطا در ورود:", error);
-        utils.showMessage(
-          "ورود ناموفق بود. لطفا اطلاعات خود را بررسی کنید.",
-          "error",
-        );
+      .catch(async (error) => {
+        console.error(" Login error:", error);
+
+        let errorMessage = "Login failed. Please check your email and password.";
+
+        if (error.message.includes("401")) {
+          errorMessage = "Incorrect email or password.";
+        } else if (error.message.includes("404")) {
+          errorMessage = "User not found.";
+        } else if (error.message.includes("Failed to fetch")) {
+          errorMessage = "Unable to connect to the server.";
+        }
+
+        utils.showMessage(errorMessage, "error");
       })
       .finally(() => {
         utils.setButtonState(loginButton, false);

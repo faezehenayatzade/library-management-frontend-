@@ -1,9 +1,7 @@
-class ApiService {
-  constructor() {
-    this.baseUrl = "https://karyar-library-management-system.liara.run/api";
-  }
+function createApiService() {
+  const baseUrl = "https://karyar-library-management-system.liara.run/api";
 
-  createHeaders(needAuth = true) {
+  function createHeaders(needAuth = true) {
     const headers = {
       "Content-Type": "application/json",
     };
@@ -18,18 +16,23 @@ class ApiService {
     return headers;
   }
 
-  sendRequest(url, options = {}) {
+  function sendRequest(url, options = {}) {
     return new Promise((resolve, reject) => {
-      const fullUrl = this.baseUrl + url;
+      const fullUrl = baseUrl + url;
       const requestOptions = {
-        headers: this.createHeaders(options.needAuth !== false),
+        headers: createHeaders(options.needAuth !== false),
         ...options,
       };
 
       fetch(fullUrl, requestOptions)
         .then((response) => {
+          if (response.status === 401) {
+            authManager.logoutUser();
+            throw new Error("Unauthorized");
+          }
+
           if (!response.ok) {
-            throw new Error(`خطا: ${response.status}`);
+            throw new Error(`Error: ${response.status}`);
           }
           return response.json();
         })
@@ -44,104 +47,101 @@ class ApiService {
     });
   }
 
-  loginUser(email, password) {
-    return this.sendRequest("/auth/login", {
+  function loginUser(email, password) {
+    return sendRequest("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
       needAuth: false,
     });
   }
 
-  getUserProfile() {
-    return this.sendRequest("/auth/me");
+  function getUserProfile() {
+    return sendRequest("/auth/me");
   }
 
-  getBooksList(filters = {}) {
+  function getBooksList(filters = {}) {
     const queryParams = new URLSearchParams(filters).toString();
     const url = queryParams ? `/books?${queryParams}` : "/books";
-    return this.sendRequest(url);
+    return sendRequest(url);
   }
 
-  getBookDetails(bookId) {
-    return this.sendRequest(`/books/${bookId}`);
+  function getBookDetails(bookId) {
+    return sendRequest(`/books/${bookId}`);
   }
 
-  getUserLoans() {
-    return this.sendRequest("/loans/my-loans");
+  function getUserLoans() {
+    return sendRequest("/loans/my-loans");
   }
 
-  borrowBook(bookId) {
+  function borrowBook(bookId) {
     return new Promise((resolve, reject) => {
       const token = authManager.getToken();
       if (!token) {
-        reject(new Error("لطفا دوباره وارد شوید"));
+        authManager.logoutUser();
+        reject(new Error("Please log in again"));
         return;
       }
 
       const userInfo = authManager.getUserInfo();
       if (!userInfo || !userInfo.id) {
-        reject(new Error("اطلاعات کاربر یافت نشد. لطفا دوباره وارد شوید"));
+        authManager.logoutUser();
+        reject(new Error("User info not found. Please log in again"));
         return;
       }
 
-      const fullUrl = this.baseUrl + "/loans";
-
-      const requestBody = {
-        bookId: bookId,
-        userId: userInfo.id,
-      };
-
-      console.log("ارسال درخواست امانت:", requestBody);
+      const fullUrl = baseUrl + "/loans";
+      const requestBody = { bookId, userId: userInfo.id };
 
       fetch(fullUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: createHeaders(),
         body: JSON.stringify(requestBody),
       })
         .then((response) => {
-          console.log("وضعیت پاسخ:", response.status, response.statusText);
+          if (response.status === 401) {
+            authManager.logoutUser();
+            throw new Error("Unauthorized");
+          }
 
           if (!response.ok) {
             return response.text().then((text) => {
-              let errorMessage = `خطای ${response.status}: ${response.statusText}`;
-
+              let errorMessage = `Error ${response.status}: ${response.statusText}`;
               try {
                 const errorData = JSON.parse(text);
                 errorMessage = errorData.message || errorMessage;
-              } catch {
-                if (text) {
-                  errorMessage = `خطای ${response.status}: ${text}`;
-                }
-              }
-
+              } catch {}
               throw new Error(errorMessage);
             });
           }
 
           return response.json();
         })
-        .then((data) => {
-          console.log("پاسخ موفق امانت:", data);
-          resolve(data);
-        })
-        .catch((error) => {
-          console.error("خطا در امانت گرفتن کتاب:", error);
-          reject(error);
-        });
+        .then((data) => resolve(data))
+        .catch((error) => reject(error));
     });
   }
-  returnBook(loanId) {
-    return this.sendRequest(`/loans/${loanId}/return`, {
+
+  function returnBook(loanId) {
+    return sendRequest(`/loans/${loanId}/return`, {
       method: "POST",
     });
   }
 
-  getCategories() {
-    return this.sendRequest("/categories");
+  function getCategories() {
+    return sendRequest("/categories");
   }
+
+  return {
+    loginUser,
+    getUserProfile,
+    getBooksList,
+    getBookDetails,
+    getUserLoans,
+    borrowBook,
+    returnBook,
+    getCategories,
+    sendRequest, 
+  };
 }
 
-const apiService = new ApiService();
+const apiService = createApiService();

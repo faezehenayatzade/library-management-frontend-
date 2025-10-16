@@ -1,81 +1,108 @@
-class AuthManager {
-  constructor() {
-    this.tokenName = "library_token";
-    this.userName = "library_user";
-  }
+function createAuthManager() {
+  const TOKEN_KEY = "library_token";
+  const USER_KEY = "library_user";
+  const CACHE_KEY = "books_cache";
+  const PROTECTED_PAGES = ["dashboard.html", "books.html", "my-loans.html"];
 
-  saveUserData(token, userData) {
+  function saveUserData(token, userData) {
     const expireDate = new Date();
-    expireDate.setTime(expireDate.getTime() + 24 * 60 * 60 * 1000);
-    document.cookie = `${this.tokenName}=${token}; expires=${expireDate.toUTCString()}; path=/`;
+    expireDate.setTime(expireDate.getTime() + 24 * 60 * 60 * 1000); 
 
-    localStorage.setItem(this.userName, JSON.stringify(userData));
+    document.cookie =
+      TOKEN_KEY + "=" + token +
+      "; expires=" + expireDate.toUTCString() +
+      "; path=/";
+
+    localStorage.setItem(USER_KEY, JSON.stringify(userData));
   }
 
-  getToken() {
-    const cookies = document.cookie.split(";");
+  function getToken() {
+    const cookies = document.cookie.split("; ");
     for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.startsWith(this.tokenName + "=")) {
-        return cookie.substring(this.tokenName.length + 1);
+      const cookie = cookies[i];
+      if (cookie.indexOf(TOKEN_KEY + "=") === 0) {
+        return cookie.substring(TOKEN_KEY.length + 1);
       }
     }
     return null;
   }
 
-  getUserInfo() {
-    const userData = localStorage.getItem(this.userName);
-    return userData ? JSON.parse(userData) : null;
+  function getUserInfo() {
+    const data = localStorage.getItem(USER_KEY);
+    if (!data) return null;
+
+    try {
+      return JSON.parse(data);
+    } catch (error) {
+      console.error("Error reading user data:", error);
+      return null;
+    }
   }
 
-  isUserLoggedIn() {
-    return this.getToken() !== null;
+  function isUserLoggedIn() {
+    return getToken() !== null;
   }
 
-  logoutUser() {
-    document.cookie = `${this.tokenName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+  function logoutUser() {
+    document.cookie =
+      TOKEN_KEY + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
 
-    localStorage.removeItem(this.userName);
-
-    localStorage.removeItem("books_cache");
-
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(CACHE_KEY);
     window.location.href = "login.html";
   }
 
-  checkPageAccess() {
-    const currentPage = window.location.pathname.split("/").pop();
-    const userLoggedIn = this.isUserLoggedIn();
+  function checkPageAccess() {
+    const parts = window.location.pathname.split("/");
+    const currentPage = parts[parts.length - 1];
+    const loggedIn = isUserLoggedIn();
 
-    if (userLoggedIn) {
-      if (currentPage === "login.html") {
-        window.location.href = "dashboard.html";
-      }
-    } else {
-      const protectedPages = ["dashboard.html", "books.html", "my-loans.html"];
-      if (protectedPages.includes(currentPage)) {
-        window.location.href = "login.html";
-      }
+    if (loggedIn && currentPage === "login.html") {
+      window.location.href = "dashboard.html";
+      return;
+    }
+
+    if (!loggedIn && PROTECTED_PAGES.indexOf(currentPage) !== -1) {
+      window.location.href = "login.html";
     }
   }
 
-  showUserInHeader() {
-    const userData = this.getUserInfo();
-    if (userData) {
-      const userAvatar = document.getElementById("userAvatar");
-      const userName = document.getElementById("userName");
-      const studentName = document.getElementById("studentName");
+  function showUserInHeader() {
+    const user = getUserInfo();
+    if (!user) return;
 
-      if (userAvatar) {
-        userAvatar.textContent = userData.firstName.charAt(0);
-      }
-      if (userName) {
-        userName.textContent = `${userData.firstName} ${userData.lastName}`;
-      }
-      if (studentName) {
-        studentName.textContent = `${userData.firstName} ${userData.lastName}`;
-      }
+    const avatarEl = document.getElementById("userAvatar");
+    const nameEl = document.getElementById("userName");
+    const studentNameEl = document.getElementById("studentName");
+
+    const firstName = user.firstName ? user.firstName : "";
+    const lastName = user.lastName ? user.lastName : "";
+    const fullName = (firstName + " " + lastName).trim();
+
+    if (avatarEl) {
+      avatarEl.textContent = firstName.length > 0
+        ? firstName.charAt(0).toUpperCase()
+        : "?";
+    }
+
+    if (nameEl) {
+      nameEl.textContent = fullName;
+    }
+
+    if (studentNameEl) {
+      studentNameEl.textContent = fullName;
     }
   }
+
+  return {
+    saveUserData,
+    getToken,
+    getUserInfo,
+    isUserLoggedIn,
+    logoutUser,
+    checkPageAccess,
+    showUserInHeader
+  };
 }
 
-const authManager = new AuthManager();
+const authManager = createAuthManager();

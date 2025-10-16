@@ -1,191 +1,180 @@
 document.addEventListener("DOMContentLoaded", function () {
   authManager.checkPageAccess();
-
   authManager.showUserInHeader();
+
+  const booksGrid = document.querySelector(".grid.grid-3");
+
+  const alertContainer = document.createElement("div");
+  alertContainer.id = "alert-container";
+  alertContainer.style.marginBottom = "1rem";
+  booksGrid.parentElement.insertBefore(alertContainer, booksGrid);
+
+  const modal = document.createElement("div");
+  modal.id = "book-details-modal";
+  modal.style.display = "none";
+  modal.style.position = "fixed";
+  modal.style.top = "0";
+  modal.style.left = "0";
+  modal.style.width = "100%";
+  modal.style.height = "100%";
+  modal.style.background = "rgba(0,0,0,0.6)";
+  modal.style.justifyContent = "center";
+  modal.style.alignItems = "center";
+  modal.style.zIndex = "9999";
+  modal.innerHTML = `
+    <div id="modalBox" style="background:white; padding:2rem; border-radius:12px; width:90%; max-width:500px; box-shadow:0 0 15px rgba(0,0,0,0.3); position:relative;">
+      <div id="modalContent" style="text-align:left;"></div>
+      <div style="text-align:center; margin-top:1.5rem;">
+        <button id="closeModalBtn" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.addEventListener("click", function (e) {
+  if (!e.target.closest("#modalBox")) {
+    modal.style.display = "none";
+  }
+});
+
+
+  document.getElementById("closeModalBtn").addEventListener("click", function () {
+    modal.style.display = "none";
+  });
 
   loadBooks();
 
   setupLogoutButton();
 
   function loadBooks() {
-    const booksContainer = document.querySelector(".grid.grid-3");
-    if (!booksContainer) return;
+    const cached = cacheManager.getBooksFromCache();
+    if (cached) {
+      console.log(" Using cached books");
+      renderBooks(cached);
+      return;
+    }
 
-    booksContainer.innerHTML =
-      '<div class="card">در حال بارگذاری کتاب‌ها...</div>';
-
-    console.log("دریافت کتاب‌ها از API...");
-
+    console.log(" Fetching books from API...");
     apiService
       .getBooksList()
-      .then((booksData) => {
-        console.log("داده‌های دریافتی:", booksData);
-
-        if (booksData && booksData.length > 0) {
-          displayBooks(booksData);
-        } else {
-          booksContainer.innerHTML =
-            '<div class="card">هیچ کتابی یافت نشد</div>';
-        }
+      .then(function (books) {
+        cacheManager.saveBooksToCache(books);
+        console.log("books:" ,books)
+        renderBooks(books);
       })
-      .catch((error) => {
-        console.error("خطا در دریافت کتاب‌ها:", error);
-        booksContainer.innerHTML =
-          '<div class="card alert-error">خطا در بارگذاری کتاب‌ها</div>';
+      .catch(function (error) {
+        console.error(" Failed to load books:", error);
+        utils.showMessage("Error loading book list.", "error");
       });
   }
 
-  function displayBooks(books) {
-    const booksContainer = document.querySelector(".grid.grid-3");
-    if (!booksContainer) return;
+  function renderBooks(books) {
+    console.log(books)
+    if (!books || books.length === 0) {
+      booksGrid.innerHTML = `<p>No books found.</p>`;
+      return;
+    }
 
-    console.log("نمایش کتاب‌ها:", books.length, "کتاب");
+    const cardsHTML = books.map((book) => utils.createBookCard(book)).join("");
+    booksGrid.innerHTML = cardsHTML;
 
-    booksContainer.innerHTML = books
-      .map((book) => createBookCard(book))
-      .join("");
-
-    setupBookButtons();
+    setupBorrowButtons();
+    setupDetailsButtons(books);
   }
 
-  function createBookCard(book) {
-    const isAvailable = book.available && book.availableCopies > 0;
-
-    return `
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-                    <h3 style="margin: 0; color: #2c3e50;">${book.title}</h3>
-                    <span class="status ${isAvailable ? "status-available" : "status-unavailable"}">
-                        ${isAvailable ? "موجود" : "ناموجود"}
-                    </span>
-                </div>
-                <p style="color: #666; margin-bottom: 0.5rem;"><strong>نویسنده:</strong> ${book.author}</p>
-                <p style="color: #666; margin-bottom: 0.5rem;"><strong>شابک:</strong> ${book.isbn}</p>
-                <p style="color: #666; margin-bottom: 0.5rem;"><strong>دسته‌بندی:</strong> ${book.category?.name || "بدون دسته"}</p>
-                <p style="color: #666; margin-bottom: 1rem;"><strong>تعداد موجود:</strong> ${book.availableCopies}</p>
-                <p style="margin-bottom: 1rem; font-size: 0.9rem; color: #555;">${book.description || "توضیحاتی موجود نیست."}</p>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-primary btn-sm borrow-btn" 
-                            data-book-id="${book.id}" 
-                            ${!isAvailable ? "disabled" : ""}>
-                        ${isAvailable ? "امانت گرفتن" : "ناموجود"}
-                    </button>
-                    <button class="btn btn-secondary btn-sm view-details-btn" data-book-id="${book.id}">
-                        مشاهده جزئیات
-                    </button>
-                </div>
-            </div>
-        `;
-  }
-
-  function setupBookButtons() {
+  function setupBorrowButtons() {
     const borrowButtons = document.querySelectorAll(".borrow-btn");
-    borrowButtons.forEach((button) => {
-      button.addEventListener("click", function () {
-        const bookId = this.getAttribute("data-book-id");
-        borrowBook(bookId, this);
+
+    borrowButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const bookId = btn.getAttribute("data-book-id");
+        const originalText = btn.textContent;
+
+        utils.setButtonState(btn, true, "Borrowing...");
+
+        apiService
+          .borrowBook(bookId)
+          .then(function () {
+            utils.showMessage(" Book borrowed successfully.", "success");
+            cacheManager.clearBooksCache();
+            loadBooks();
+          })
+          .catch(function (error) {
+            console.error(" Borrow failed:", error);
+            utils.showMessage(
+              error.message || "Error borrowing book.",
+              "error"
+            );
+          })
+          .finally(function () {
+            utils.setButtonState(btn, false, originalText);
+          });
       });
     });
+  }
 
+  function setupDetailsButtons(books) {
     const detailButtons = document.querySelectorAll(".view-details-btn");
-    detailButtons.forEach((button) => {
-      button.addEventListener("click", function () {
-        const bookId = this.getAttribute("data-book-id");
-        viewBookDetails(bookId);
+
+    detailButtons.forEach(function (btn) {
+      btn.addEventListener("click", function (event) {
+        event.preventDefault();
+
+        const bookId = btn.getAttribute("data-book-id");
+        console.log(" Book details:", bookId);
+
+        apiService
+          .getBookDetails(bookId)
+          .then(function (book) {
+            showBookDetails(book);
+          })
+          .catch(function (error) {
+            console.warn(" API error, trying cache:", error);
+
+            const cachedBooks = cacheManager.getBooksFromCache() || [];
+            const found = cachedBooks.find(
+              (b) => b.id == bookId || b._id == bookId
+            );
+            if (found) {
+              showBookDetails(found);
+            } else {
+              utils.showMessage("Error displaying book details.", "error");
+            }
+          });
       });
     });
   }
 
-  function borrowBook(bookId, buttonElement) {
-    const originalText = buttonElement.textContent;
-    buttonElement.textContent = "در حال امانت...";
-    buttonElement.disabled = true;
+  function showBookDetails(book) {
+  const modalContent = document.getElementById("modalContent");
 
-    console.log("شروع امانت گرفتن کتاب با ID:", bookId);
-
-    apiService
-      .borrowBook(bookId)
-      .then((response) => {
-        console.log("پاسخ کامل امانت:", response);
-
-        if (response.message && response.message.includes("successfully")) {
-          alert("✅ " + response.message);
-          setTimeout(() => {
-            loadBooks();
-          }, 1000);
-        } else if (response.loan) {
-          alert("✅ کتاب با موفقیت امانت گرفته شد!");
-          setTimeout(() => {
-            loadBooks();
-          }, 1000);
-        } else {
-          alert("📖 امانت ثبت شد");
-          setTimeout(() => {
-            loadBooks();
-          }, 1000);
-        }
-      })
-      .catch((error) => {
-        console.error("خطای کامل در امانت گرفتن:", error);
-
-        if (
-          error.message.includes("401") ||
-          error.message.includes("Unauthorized")
-        ) {
-          alert("❌ لطفا دوباره وارد سیستم شوید");
-          authManager.logoutUser();
-        } else if (
-          error.message.includes("404") ||
-          error.message.includes("not found")
-        ) {
-          alert("❌ کتاب مورد نظر یافت نشد");
-        } else if (
-          error.message.includes("400") ||
-          error.message.includes("Bad request")
-        ) {
-          alert("❌ درخواست نامعتبر. لطفا مجدد تلاش کنید");
-        } else if (
-          error.message.includes("403") ||
-          error.message.includes("Forbidden")
-        ) {
-          alert("❌ دسترسی غیرمجاز");
-        } else {
-          alert("❌ خطا در امانت گرفتن کتاب: " + error.message);
-        }
-
-        buttonElement.textContent = originalText;
-        buttonElement.disabled = false;
-      });
+  let categoryName = "Uncategorized";
+  if (book.category.name) {
+    categoryName = typeof book.category === "string" ? book.category : book.category.name || "Uncategorized";
   }
 
-  function viewBookDetails(bookId) {
-    apiService
-      .getBookDetails(bookId)
-      .then((bookData) => {
-        alert(
-          `جزئیات کتاب:\n\n` +
-            `عنوان: ${bookData.title}\n` +
-            `نویسنده: ${bookData.author}\n` +
-            `دسته‌بندی: ${bookData.category?.name || "بدون دسته"}\n` +
-            `تعداد موجود: ${bookData.availableCopies}\n\n` +
-            `${bookData.description || "بدون توضیحات"}`,
-        );
-      })
-      .catch((error) => {
-        console.error("خطا در دریافت جزئیات کتاب:", error);
-        alert("خطا در دریافت جزئیات کتاب");
-      });
+
+  modalContent.innerHTML = `
+    <h2 class="mb-2">${book.title}</h2>
+    <p><strong>Author:</strong> ${book.author || "Unknown"}</p>
+    <p><strong>ISBN:</strong> ${book.isbn || "-"}</p>
+    <p><strong>Category:</strong> ${categoryName}</p>
+    <p><strong>Available Copies:</strong> ${book.availableCopies || 0}</p>
+    <hr class="mb-2 mt-2">
+    <p><strong>Description:</strong></p>
+    <p>${book.description || "No description provided."}</p>
+  `;
+
+  modal.style.display = "flex";
   }
+
 
   function setupLogoutButton() {
     const logoutLinks = document.querySelectorAll('a[href="login.html"]');
-    logoutLinks.forEach((link) => {
+    logoutLinks.forEach(function (link) {
       link.addEventListener("click", function (event) {
         event.preventDefault();
-
-        const confirmLogout = confirm(
-          "آیا مطمئن هستید که می‌خواهید خارج شوید؟",
-        );
+        const confirmLogout = confirm("Are you sure you want to log out?");
         if (confirmLogout) {
           authManager.logoutUser();
         }
@@ -193,3 +182,4 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
+

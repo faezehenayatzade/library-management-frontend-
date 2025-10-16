@@ -1,10 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
   authManager.checkPageAccess();
-
   authManager.showUserInHeader();
-
   loadUserLoans();
-
   setupLogoutButton();
 
   function loadUserLoans() {
@@ -15,8 +12,8 @@ document.addEventListener("DOMContentLoaded", function () {
         updateLoanStats(loansData);
       })
       .catch((error) => {
-        console.error("خطا در دریافت امانت‌ها:", error);
-        utils.showMessage("خطا در بارگذاری امانت‌ها", "error");
+        console.error("Error fetching loans:", error);
+        utils.showMessage("Failed to load loans", "error");
       });
   }
 
@@ -26,17 +23,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (loans.length === 0) {
       loansTable.innerHTML = `
-                <tr>
-                    <td colspan="5" style="text-align: center; color: #666;">
-                        هیچ امانت فعالی ندارید
-                    </td>
-                </tr>
-            `;
+        <tr>
+          <td colspan="5" style="text-align: center; color: #666;">
+            No active loans
+          </td>
+        </tr>`;
       return;
     }
 
     loansTable.innerHTML = loans.map((loan) => createLoanRow(loan)).join("");
-
     setupReturnButtons();
   }
 
@@ -46,31 +41,28 @@ document.addEventListener("DOMContentLoaded", function () {
     const canReturn = loan.status === "active";
 
     return `
-            <tr>
-                <td>
-                    <strong>${loan.book.title}</strong>
-                    <br>
-                    <small style="color: #666;">ISBN: ${loan.book.isbn}</small>
-                </td>
-                <td>${loan.book.author}</td>
-                <td>${utils.formatDate(loan.loanDate)}</td>
-                <td><span class="status ${statusClass}">${statusText}</span></td>
-                <td>
-                    <button class="btn btn-success btn-sm return-btn" 
-                            data-loan-id="${loan.id}" 
-                            ${!canReturn ? "disabled" : ""}>
-                        ${canReturn ? "Return" : "Returned"}
-                    </button>
-                </td>
-            </tr>
-        `;
+      <tr data-loan-id="${loan.id}">
+        <td>
+          <strong>${loan.book.title}</strong>
+          <br>
+          <small style="color: #666;">ISBN: ${loan.book.isbn}</small>
+        </td>
+        <td>${loan.book.author}</td>
+        <td>${utils.formatDate(loan.loanDate)}</td>
+        <td><span class="status ${statusClass}">${statusText}</span></td>
+        <td>
+          <button class="btn btn-success btn-sm return-btn" 
+                  ${!canReturn ? "disabled" : ""}>
+            ${canReturn ? "Return" : "Returned"}
+          </button>
+        </td>
+      </tr>
+    `;
   }
 
   function updateLoanStats(loans) {
     const activeLoans = loans.filter((loan) => loan.status === "active").length;
-    const returnedLoans = loans.filter(
-      (loan) => loan.status === "returned",
-    ).length;
+    const returnedLoans = loans.filter((loan) => loan.status === "returned").length;
 
     const statNumbers = document.querySelectorAll(".stat-number");
     if (statNumbers.length >= 2) {
@@ -103,30 +95,38 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function setupReturnButtons() {
-    const returnButtons = document.querySelectorAll(
-      ".return-btn:not([disabled])",
-    );
+    const returnButtons = document.querySelectorAll(".return-btn:not([disabled])");
     returnButtons.forEach((button) => {
       button.addEventListener("click", function () {
-        const loanId = this.getAttribute("data-loan-id");
-        returnBook(loanId, this);
+        const row = this.closest("tr");
+        const loanId = row.getAttribute("data-loan-id");
+        returnBook(loanId, row, this);
       });
     });
   }
 
-  function returnBook(loanId, buttonElement) {
+  function returnBook(loanId, rowElement, buttonElement) {
     utils.setButtonState(buttonElement, true, "Returning...");
 
     apiService
       .returnBook(loanId)
-      .then((returnData) => {
-        utils.showMessage("کتاب با موفقیت بازگردانده شد!", "success");
+      .then(() => {
+        utils.showMessage("Book returned successfully", "success");
 
-        loadUserLoans();
+        const statusSpan = rowElement.querySelector(".status");
+        statusSpan.textContent = "Returned";
+        statusSpan.className = "status status-returned";
+
+        buttonElement.textContent = "Returned";
+        buttonElement.disabled = true;
+        buttonElement.classList.remove("btn-success");
+        buttonElement.classList.add("btn-secondary");
+
+        apiService.getUserLoans().then(updateLoanStats);
       })
       .catch((error) => {
-        console.error("خطا در بازگرداندن کتاب:", error);
-        utils.showMessage("خطا در بازگرداندن کتاب", "error");
+        console.error("Error returning book:", error);
+        utils.showMessage("Failed to return book", "error");
         utils.setButtonState(buttonElement, false);
       });
   }
@@ -136,10 +136,7 @@ document.addEventListener("DOMContentLoaded", function () {
     logoutLinks.forEach((link) => {
       link.addEventListener("click", function (event) {
         event.preventDefault();
-
-        const confirmLogout = confirm(
-          "آیا مطمئن هستید که می‌خواهید خارج شوید؟",
-        );
+        const confirmLogout = confirm("Are you sure you want to logout?");
         if (confirmLogout) {
           authManager.logoutUser();
         }

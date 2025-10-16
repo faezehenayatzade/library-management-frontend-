@@ -1,41 +1,55 @@
-class CacheManager {
-  constructor() {
-    this.booksCacheKey = "books_cache";
-    this.cacheTimeKey = "books_cache_time";
-    this.cacheDuration = 5 * 60 * 1000;
-  }
+function createCacheManager() {
+  const booksCacheKey = "books_cache";
+  const cacheTimeKey = "books_cache_time";
+  const cacheDuration = 5 * 60 * 1000;
 
-  saveBooksToCache(booksData) {
+  function saveBooksToCache(booksData) {
     const cacheData = {
       data: booksData,
       timestamp: new Date().getTime(),
     };
-    localStorage.setItem(this.booksCacheKey, JSON.stringify(cacheData));
+    localStorage.setItem(booksCacheKey, JSON.stringify(cacheData));
   }
 
-  getBooksFromCache() {
-    const cachedData = localStorage.getItem(this.booksCacheKey);
+  function getBooksFromCache() {
+    const cachedData = localStorage.getItem(booksCacheKey);
     if (!cachedData) return null;
 
-    const cacheInfo = JSON.parse(cachedData);
+    let cacheInfo;
+    try {
+      cacheInfo = JSON.parse(cachedData);
+    } catch (error) {
+      console.error("Error parsing cache data:", error);
+      clearBooksCache();
+      return null;
+    }
+
     const currentTime = new Date().getTime();
     const cacheAge = currentTime - cacheInfo.timestamp;
 
-    if (cacheAge > this.cacheDuration) {
-      this.clearBooksCache();
+    if (cacheAge > cacheDuration) {
+      clearBooksCache();
       return null;
     }
 
     return cacheInfo.data;
   }
 
-  clearBooksCache() {
-    localStorage.removeItem(this.booksCacheKey);
+  function clearBooksCache() {
+    localStorage.removeItem(booksCacheKey); 
+    localStorage.removeItem(cacheTimeKey);   
   }
 
-  hasValidCache() {
-    return this.getBooksFromCache() !== null;
+  function hasValidCache() {
+    return getBooksFromCache() !== null;
   }
+
+  return {
+    saveBooksToCache,
+    getBooksFromCache,
+    clearBooksCache,
+    hasValidCache,
+  };
 }
 
-const cacheManager = new CacheManager();
+const cacheManager = createCacheManager();
