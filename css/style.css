@@ -330,7 +330,7 @@ body {
   color: #666;
   border-radius: 4px;
   transition: all 0.3s;
-}
+} 
 
 .pagination a:hover,
 .pagination a.active {
